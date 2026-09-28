@@ -1,0 +1,6 @@
+{
+  "name": "imm TV",
+  "description": "Modern Netflix-style mobile streaming app for trending movies, TV shows, watchlists, and live stream embeds.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

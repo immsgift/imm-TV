@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- Screen frame card -->
+    <path
+        android:pathData="M30,28 L78,28 A8,8 0 0,1 86,36 L86,72 A8,8 0 0,1 78,80 L30,80 A8,8 0 0,1 22,72 L22,36 A8,8 0 0,1 30,28 Z"
+        android:strokeWidth="2.5">
+        <aapt:attr name="android:strokeColor">
+            <gradient
+                android:startX="22"
+                android:startY="28"
+                android:endX="86"
+                android:endY="80"
+                android:type="linear">
+                <item android:color="#FFE50914" android:offset="0.0" />
+                <item android:color="#FFB8000B" android:offset="1.0" />
+            </gradient>
+        </aapt:attr>
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:startX="54"
+                android:startY="28"
+                android:endX="54"
+                android:endY="80"
+                android:type="linear">
+                <item android:color="#EE191924" android:offset="0.0" />
+                <item android:color="#FF101016" android:offset="1.0" />
+            </gradient>
+        </aapt:attr>
+    </path>
+
+    <!-- TV stand base line -->
+    <path
+        android:pathData="M44,85 L64,85"
+        android:strokeWidth="2.5"
+        android:strokeColor="#FFE50914"
+        android:strokeLineCap="round" />
+    <path
+        android:pathData="M54,80 L54,85"
+        android:strokeWidth="2.5"
+        android:strokeColor="#FFE50914" />
+
+    <!-- "imm" lettering -->
+    <!-- 'i' dot -->
+    <path
+        android:pathData="M32,42 A2.2,2.2 0 1,1 32,41.9 Z"
+        android:fillColor="#FFFFFFFF" />
+    <!-- 'i' stem -->
+    <path
+        android:pathData="M30.8,47 L33.2,47 L33.2,63 L30.8,63 Z"
+        android:fillColor="#FFFFFFFF" />
+
+    <!-- first 'm' -->
+    <path
+        android:pathData="M36.5,47 L38.5,47 L38.5,63 L36.5,63 Z"
+        android:fillColor="#FFFFFFFF" />
+    <path
+        android:pathData="M38.5,50 C39.5,47.5 42.5,47.5 43.5,50 L43.5,63 L41.5,63 L41.5,51 C41,49 39.5,49 38.5,51 Z"
+        android:fillColor="#FFFFFFFF" />
+    <path
+        android:pathData="M43.5,50 C44.5,47.5 47.5,47.5 48.5,50 L48.5,63 L46.5,63 L46.5,51 C46,49 44.5,49 43.5,51 Z"
+        android:fillColor="#FFFFFFFF" />
+
+    <!-- Red Play Badge / Cinema play button on the right side -->
+    <path
+        android:pathData="M56,40 L76,54 L56,68 Z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:startX="56"
+                android:startY="40"
+                android:endX="76"
+                android:endY="68"
+                android:type="linear">
+                <item android:color="#FFFF2A35" android:offset="0.0" />
+                <item android:color="#FFE50914" android:offset="1.0" />
+            </gradient>
+        </aapt:attr>
+    </path>
+    <!-- Inner play highlight -->
+    <path
+        android:pathData="M60,46 L71,54 L60,62 Z"
+        android:fillColor="#22FFFFFF" />
+</vector>
