@@ -1,23 +1,28 @@
 package com.example.ui.components
 
 import android.annotation.SuppressLint
+import android.content.Intent
 import android.graphics.Bitmap
+import android.net.Uri
+import android.view.View
 import android.view.ViewGroup
 import android.webkit.WebChromeClient
+import android.webkit.WebResourceRequest
 import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -27,31 +32,25 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.ClosedCaption
-import androidx.compose.material.icons.filled.FastForward
-import androidx.compose.material.icons.filled.FastRewind
 import androidx.compose.material.icons.filled.Fullscreen
 import androidx.compose.material.icons.filled.FullscreenExit
-import androidx.compose.material.icons.filled.Language
-import androidx.compose.material.icons.filled.Pause
-import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.OpenInNew
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Subtitles
+import androidx.compose.material.icons.filled.Tune
+import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Slider
-import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -60,6 +59,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -68,10 +68,7 @@ import androidx.compose.ui.viewinterop.AndroidView
 import com.example.data.model.SubtitleTrack
 import com.example.data.util.SubtitleProvider
 import com.example.ui.theme.ImmDarkBackground
-import com.example.ui.theme.ImmGold
 import com.example.ui.theme.ImmNetflixRed
-import com.example.ui.theme.ImmSurface
-import com.example.ui.theme.ImmTextMuted
 import com.example.ui.theme.ImmTextPrimary
 import com.example.ui.theme.ImmTextSecondary
 import com.example.ui.viewmodel.StreamServer
@@ -90,39 +87,45 @@ fun VideoPlayerView(
     onClosePlayer: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
-    var isPlaying by remember { mutableStateOf(true) }
+    val context = LocalContext.current
     var showControls by remember { mutableStateOf(true) }
     var isBuffering by remember { mutableStateOf(true) }
     var webViewRef by remember { mutableStateOf<WebView?>(null) }
-    var currentProgress by remember { mutableFloatStateOf(0.15f) }
+    var loadError by remember { mutableStateOf(false) }
 
-    // Subtitle track selection state: Arabic selected by default
-    var selectedSubtitleTrack by remember { mutableStateOf(SubtitleTrack.ARABIC) }
-    var showSubtitleMenu by remember { mutableStateOf(false) }
+    val isDirectVideo = remember(videoUrl) {
+        val lower = videoUrl.trim().lowercase()
+        lower.endsWith(".mp4") || lower.endsWith(".m3u8") || lower.endsWith(".webm") || lower.endsWith(".mkv")
+    }
 
-    // Auto-hide controls after 4.5 seconds of inactivity
-    LaunchedEffect(showControls, isPlaying, showSubtitleMenu) {
-        if (showControls && isPlaying && !showSubtitleMenu) {
-            delay(4500)
+    // Auto-hide controls after 5 seconds so user can watch comfortably
+    LaunchedEffect(showControls) {
+        if (showControls) {
+            delay(5000)
             showControls = false
         }
     }
 
-    // HTML wrapper to play media seamlessly with HTML5 video player + WebVTT Arabic subtitles
-    val htmlContent = remember(videoUrl, customSubtitleUrl) {
-        SubtitleProvider.generatePlayerHtml(
-            videoUrl = videoUrl,
-            customSubtitleUrl = customSubtitleUrl,
-            initialTrackId = selectedSubtitleTrack.id
-        )
+    // Function to load url into webview correctly
+    fun loadTargetMedia(wv: WebView, url: String) {
+        if (url.isBlank()) return
+        isBuffering = true
+        loadError = false
+        val lower = url.trim().lowercase()
+        if (lower.endsWith(".mp4") || lower.endsWith(".m3u8") || lower.endsWith(".webm") || lower.endsWith(".mkv")) {
+            val html = SubtitleProvider.generatePlayerHtml(url, customSubtitleUrl, "ar")
+            wv.loadDataWithBaseURL("https://imm.tv", html, "text/html", "UTF-8", null)
+        } else {
+            // Direct web embed or YouTube - load URL directly so native scripts, controls, and media run smoothly
+            wv.loadUrl(url)
+        }
     }
 
     Box(
         modifier = modifier
-            .background(ImmDarkBackground)
-            .clickable { showControls = !showControls }
+            .background(Color.Black)
     ) {
-        // Embedded Android WebView
+        // Embedded Android WebView (unobstructed so touches pass directly to player)
         AndroidView(
             modifier = Modifier.fillMaxSize(),
             factory = { ctx ->
@@ -134,403 +137,349 @@ fun VideoPlayerView(
                     settings.apply {
                         javaScriptEnabled = true
                         domStorageEnabled = true
+                        databaseEnabled = true
                         mediaPlaybackRequiresUserGesture = false
                         allowContentAccess = true
                         allowFileAccess = true
                         loadWithOverviewMode = true
                         useWideViewPort = true
+                        setSupportMultipleWindows(false)
+                        javaScriptCanOpenWindowsAutomatically = false
+                        mixedContentMode = WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
+                        userAgentString = "Mozilla/5.0 (Linux; Android 14; Pixel 8 Pro) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Mobile Safari/537.36"
                         cacheMode = WebSettings.LOAD_DEFAULT
                     }
-                    setBackgroundColor(android.graphics.Color.parseColor("#0E0E12"))
+                    setBackgroundColor(android.graphics.Color.BLACK)
                     webViewClient = object : WebViewClient() {
                         override fun onPageStarted(view: WebView?, url: String?, favicon: Bitmap?) {
                             isBuffering = true
+                            loadError = false
                         }
                         override fun onPageFinished(view: WebView?, url: String?) {
                             isBuffering = false
-                            // Ensure default track is applied
+                            // Suppress popup windows and ad scripts
                             view?.evaluateJavascript(
-                                "if(window.setSubtitleTrack) { setSubtitleTrack('${selectedSubtitleTrack.id}'); }",
+                                "(function(){ window.open = function(){ return null; }; })();",
                                 null
                             )
                         }
+                        override fun shouldInterceptRequest(view: WebView?, request: WebResourceRequest?): android.webkit.WebResourceResponse? {
+                            val reqUrl = request?.url?.toString()?.lowercase() ?: return null
+                            val adPatterns = listOf(
+                                "popads", "popcash", "adsterra", "doubleclick", "googlesyndication",
+                                "bet365", "1xbet", "propellerads", "clickadu", "exoclick", "adtrue",
+                                "adcash", "hilltopads", "monetag", "deloton", "trafficjunky"
+                            )
+                            if (adPatterns.any { reqUrl.contains(it) }) {
+                                return android.webkit.WebResourceResponse("text/plain", "utf-8", java.io.ByteArrayInputStream(ByteArray(0)))
+                            }
+                            return super.shouldInterceptRequest(view, request)
+                        }
+                        override fun onReceivedError(view: WebView?, errorCode: Int, description: String?, failingUrl: String?) {
+                            super.onReceivedError(view, errorCode, description, failingUrl)
+                            isBuffering = false
+                        }
+                        override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
+                            val nextUrl = request?.url?.toString() ?: return false
+                            val lower = nextUrl.lowercase()
+                            val adPatterns = listOf("popads", "adsterra", "bet365", "1xbet", "propellerads", "clickadu")
+                            if (adPatterns.any { lower.contains(it) }) {
+                                return true
+                            }
+                            if (!nextUrl.startsWith("http://") && !nextUrl.startsWith("https://")) {
+                                return true
+                            }
+                            return false
+                        }
                     }
-                    webChromeClient = object : WebChromeClient() {}
-                    loadDataWithBaseURL("https://imm.tv", htmlContent, "text/html", "UTF-8", null)
+                    webChromeClient = object : WebChromeClient() {
+                        override fun onCreateWindow(view: WebView?, isDialog: Boolean, isUserGesture: Boolean, resultMsg: android.os.Message?): Boolean {
+                            // Block intrusive popup windows from stream servers
+                            return false
+                        }
+                    }
+                    tag = videoUrl
+                    loadTargetMedia(this, videoUrl)
                     webViewRef = this
                 }
             },
             update = { wv ->
                 webViewRef = wv
+                val currentTag = wv.tag as? String
+                if (currentTag != videoUrl) {
+                    wv.tag = videoUrl
+                    loadTargetMedia(wv, videoUrl)
+                }
             }
         )
 
-        // Buffering indicator
+        // Buffering Indicator
         if (isBuffering) {
             Box(
                 modifier = Modifier.fillMaxSize(),
                 contentAlignment = Alignment.Center
             ) {
-                CircularProgressIndicator(
-                    color = ImmNetflixRed,
-                    strokeWidth = 3.dp,
-                    modifier = Modifier.size(44.dp)
-                )
+                Surface(
+                    color = Color.Black.copy(alpha = 0.65f),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        CircularProgressIndicator(
+                            color = ImmNetflixRed,
+                            strokeWidth = 3.dp,
+                            modifier = Modifier.size(24.dp)
+                        )
+                        Text(
+                            text = "جاري تحميل البث...",
+                            color = Color.White,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
+                }
             }
         }
 
-        // Overlay Controls
+        // Discrete Floating Overlay Toggle Button (ALWAYS accessible, never blocks player center)
+        IconButton(
+            onClick = { showControls = !showControls },
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .padding(top = 10.dp, end = 10.dp)
+                .size(34.dp)
+                .clip(CircleShape)
+                .background(Color.Black.copy(alpha = 0.5f))
+                .testTag("toggle_overlay_controls_button")
+        ) {
+            Icon(
+                imageVector = if (showControls) Icons.Default.VisibilityOff else Icons.Default.Visibility,
+                contentDescription = if (showControls) "Hide Overlay" else "Show Overlay",
+                tint = Color.White.copy(alpha = 0.85f),
+                modifier = Modifier.size(18.dp)
+            )
+        }
+
+        // Top Navigation & Actions Bar (Floats at top, only occupies its own height)
         AnimatedVisibility(
             visible = showControls,
-            enter = fadeIn(),
-            exit = fadeOut(),
-            modifier = Modifier.fillMaxSize()
+            enter = fadeIn() + slideInVertically(initialOffsetY = { -it }),
+            exit = fadeOut() + slideOutVertically(targetOffsetY = { -it }),
+            modifier = Modifier.align(Alignment.TopCenter)
         ) {
             Box(
                 modifier = Modifier
-                    .fillMaxSize()
+                    .fillMaxWidth()
                     .background(
                         Brush.verticalGradient(
                             colors = listOf(
-                                Color.Black.copy(alpha = 0.88f),
-                                Color.Transparent,
-                                Color.Black.copy(alpha = 0.92f)
+                                Color.Black.copy(alpha = 0.92f),
+                                Color.Black.copy(alpha = 0.65f),
+                                Color.Transparent
                             )
                         )
                     )
+                    .padding(horizontal = 12.dp, vertical = 8.dp)
             ) {
-                // Top Header Row
                 Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 12.dp)
-                        .align(Alignment.TopCenter),
+                    modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Surface(
-                                color = ImmNetflixRed,
-                                shape = RoundedCornerShape(4.dp),
-                                modifier = Modifier.padding(end = 6.dp)
+                    // Left: Back/Close & Title
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        if (onClosePlayer != null) {
+                            IconButton(
+                                onClick = onClosePlayer,
+                                modifier = Modifier
+                                    .size(36.dp)
+                                    .clip(CircleShape)
+                                    .background(Color.White.copy(alpha = 0.2f))
+                                    .testTag("close_player_button")
                             ) {
-                                Text(
-                                    text = activeServer.badge,
-                                    fontSize = 10.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = Color.White,
-                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                Icon(
+                                    imageVector = Icons.Default.Close,
+                                    contentDescription = "Close Player",
+                                    tint = Color.White,
+                                    modifier = Modifier.size(20.dp)
                                 )
                             }
+                            Spacer(modifier = Modifier.width(8.dp))
+                        }
 
-                            // Arabic Subtitles Badge (مترجم للعربية)
-                            Surface(
-                                color = Color(0xFF1B5E20),
-                                shape = RoundedCornerShape(4.dp),
-                                modifier = Modifier
-                                    .padding(end = 8.dp)
-                                    .testTag("player_arabic_sub_badge")
-                            ) {
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                        Column(modifier = Modifier.weight(1f)) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Surface(
+                                    color = ImmNetflixRed,
+                                    shape = RoundedCornerShape(4.dp),
+                                    modifier = Modifier.padding(end = 6.dp)
                                 ) {
-                                    Icon(
-                                        imageVector = Icons.Default.Subtitles,
-                                        contentDescription = null,
-                                        tint = Color.White,
-                                        modifier = Modifier.size(11.dp)
-                                    )
-                                    Spacer(modifier = Modifier.width(3.dp))
                                     Text(
-                                        text = "مترجم للعربية",
-                                        fontSize = 10.sp,
+                                        text = activeServer.badge,
+                                        fontSize = 9.sp,
                                         fontWeight = FontWeight.Bold,
-                                        color = Color.White
+                                        color = Color.White,
+                                        modifier = Modifier.padding(horizontal = 5.dp, vertical = 2.dp)
                                     )
                                 }
+                                Text(
+                                    text = title,
+                                    style = MaterialTheme.typography.titleSmall,
+                                    color = Color.White,
+                                    fontWeight = FontWeight.Bold,
+                                    maxLines = 1
+                                )
                             }
-
                             Text(
-                                text = title,
-                                style = MaterialTheme.typography.titleMedium,
-                                color = ImmTextPrimary,
+                                text = "اضغط على المشغل للتحكم الكامل • ${activeServer.displayName}",
+                                fontSize = 10.sp,
+                                color = ImmTextSecondary,
                                 maxLines = 1
                             )
                         }
-
-                        Text(
-                            text = "Streaming via ${activeServer.displayName} • ترجمة: ${selectedSubtitleTrack.name}",
-                            fontSize = 11.sp,
-                            color = ImmTextSecondary
-                        )
                     }
 
-                    if (onClosePlayer != null) {
+                    // Right: Actions (Reload, External, Fullscreen) - leave room for toggle button
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        modifier = Modifier.padding(end = 38.dp)
+                    ) {
+                        // Reload Stream
                         IconButton(
-                            onClick = onClosePlayer,
+                            onClick = {
+                                webViewRef?.let { loadTargetMedia(it, videoUrl) }
+                                Toast.makeText(context, "إعادة تحميل المشغل...", Toast.LENGTH_SHORT).show()
+                            },
                             modifier = Modifier
-                                .size(36.dp)
+                                .size(34.dp)
                                 .clip(CircleShape)
                                 .background(Color.White.copy(alpha = 0.2f))
-                                .testTag("close_player_button")
                         ) {
                             Icon(
-                                imageVector = Icons.Default.Close,
-                                contentDescription = "Close Player",
-                                tint = Color.White
+                                imageVector = Icons.Default.Refresh,
+                                contentDescription = "Reload",
+                                tint = Color.White,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
+
+                        // Open in External Browser / Player
+                        IconButton(
+                            onClick = {
+                                try {
+                                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse(videoUrl))
+                                    context.startActivity(intent)
+                                } catch (e: Exception) {
+                                    Toast.makeText(context, "تعذر فتح الرابط خارجياً", Toast.LENGTH_SHORT).show()
+                                }
+                            },
+                            modifier = Modifier
+                                .size(34.dp)
+                                .clip(CircleShape)
+                                .background(Color.White.copy(alpha = 0.2f))
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.OpenInNew,
+                                contentDescription = "Open in External App",
+                                tint = Color.White,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
+
+                        // Fullscreen Toggle
+                        IconButton(
+                            onClick = onToggleFullscreen,
+                            modifier = Modifier
+                                .size(34.dp)
+                                .clip(CircleShape)
+                                .background(Color.White.copy(alpha = 0.2f))
+                                .testTag("top_fullscreen_button")
+                        ) {
+                            Icon(
+                                imageVector = if (isFullscreen) Icons.Default.FullscreenExit else Icons.Default.Fullscreen,
+                                contentDescription = if (isFullscreen) "Exit Fullscreen" else "Enter Fullscreen",
+                                tint = Color.White,
+                                modifier = Modifier.size(18.dp)
                             )
                         }
                     }
                 }
+            }
+        }
 
-                // Center Playback Buttons (Rewind 10s, Play/Pause, Forward 10s)
+        // Bottom Server & Controls Strip (Floats at bottom, only occupies its own height)
+        AnimatedVisibility(
+            visible = showControls,
+            enter = fadeIn() + slideInVertically(initialOffsetY = { it }),
+            exit = fadeOut() + slideOutVertically(targetOffsetY = { it }),
+            modifier = Modifier.align(Alignment.BottomCenter)
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(
+                        Brush.verticalGradient(
+                            colors = listOf(
+                                Color.Transparent,
+                                Color.Black.copy(alpha = 0.75f),
+                                Color.Black.copy(alpha = 0.95f)
+                            )
+                        )
+                    )
+                    .padding(horizontal = 12.dp, vertical = 8.dp)
+            ) {
                 Row(
-                    modifier = Modifier.align(Alignment.Center),
-                    horizontalArrangement = Arrangement.spacedBy(24.dp),
-                    verticalAlignment = Alignment.CenterVertically
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    // Rewind 10s
-                    IconButton(
-                        onClick = {
-                            currentProgress = (currentProgress - 0.05f).coerceAtLeast(0f)
-                            webViewRef?.evaluateJavascript(
-                                "if(window.seekVideo) { seekVideo(-10); } else { var v = document.getElementById('player'); if(v) v.currentTime = Math.max(0, v.currentTime - 10); }",
-                                null
-                            )
-                        },
-                        modifier = Modifier
-                            .size(48.dp)
-                            .clip(CircleShape)
-                            .background(Color.White.copy(alpha = 0.15f))
-                            .testTag("rewind_10s_button")
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.FastRewind,
-                            contentDescription = "Rewind 10 seconds",
-                            tint = Color.White,
-                            modifier = Modifier.size(28.dp)
-                        )
-                    }
-
-                    // Play / Pause Toggle
-                    IconButton(
-                        onClick = {
-                            isPlaying = !isPlaying
-                            if (isPlaying) {
-                                webViewRef?.evaluateJavascript(
-                                    "var v = document.getElementById('player'); if(v) v.play();",
-                                    null
-                                )
-                            } else {
-                                webViewRef?.evaluateJavascript(
-                                    "var v = document.getElementById('player'); if(v) v.pause();",
-                                    null
-                                )
-                            }
-                        },
-                        modifier = Modifier
-                            .size(64.dp)
-                            .clip(CircleShape)
-                            .background(ImmNetflixRed)
-                            .testTag("play_pause_button")
-                    ) {
-                        Icon(
-                            imageVector = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
-                            contentDescription = if (isPlaying) "Pause" else "Play",
-                            tint = Color.White,
-                            modifier = Modifier.size(36.dp)
-                        )
-                    }
-
-                    // Forward 10s
-                    IconButton(
-                        onClick = {
-                            currentProgress = (currentProgress + 0.05f).coerceAtMost(1f)
-                            webViewRef?.evaluateJavascript(
-                                "if(window.seekVideo) { seekVideo(10); } else { var v = document.getElementById('player'); if(v) v.currentTime += 10; }",
-                                null
-                            )
-                        },
-                        modifier = Modifier
-                            .size(48.dp)
-                            .clip(CircleShape)
-                            .background(Color.White.copy(alpha = 0.15f))
-                            .testTag("forward_10s_button")
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.FastForward,
-                            contentDescription = "Forward 10 seconds",
-                            tint = Color.White,
-                            modifier = Modifier.size(28.dp)
-                        )
-                    }
-                }
-
-                // Bottom Controls: Progress bar, CC Subtitles, Fullscreen, Server Switcher
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 8.dp)
-                        .align(Alignment.BottomCenter)
-                ) {
-                    // Scrubbing Slider
+                    // Quick Server Chips
                     Row(
-                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text(
-                            text = "18:42",
-                            fontSize = 11.sp,
-                            color = ImmTextSecondary,
-                            modifier = Modifier.padding(end = 8.dp)
+                        ServerChip(
+                            label = "سيرفر 1",
+                            isSelected = activeServer == StreamServer.SERVER_1,
+                            onClick = { onServerSelect(StreamServer.SERVER_1) }
                         )
-                        Slider(
-                            value = currentProgress,
-                            onValueChange = {
-                                currentProgress = it
-                                webViewRef?.evaluateJavascript(
-                                    "if(window.setVideoTime) { setVideoTime($it); }",
-                                    null
-                                )
-                            },
-                            modifier = Modifier.weight(1f),
-                            colors = SliderDefaults.colors(
-                                thumbColor = ImmNetflixRed,
-                                activeTrackColor = ImmNetflixRed,
-                                inactiveTrackColor = Color.White.copy(alpha = 0.3f)
-                            )
+                        ServerChip(
+                            label = "سيرفر 2",
+                            isSelected = activeServer == StreamServer.SERVER_2,
+                            onClick = { onServerSelect(StreamServer.SERVER_2) }
                         )
-                        Text(
-                            text = "2:24:10",
-                            fontSize = 11.sp,
-                            color = ImmTextSecondary,
-                            modifier = Modifier.padding(start = 8.dp)
+                        ServerChip(
+                            label = "سيرفر 3",
+                            isSelected = activeServer == StreamServer.SERVER_3,
+                            onClick = { onServerSelect(StreamServer.SERVER_3) }
+                        )
+                        ServerChip(
+                            label = "تريلر",
+                            isSelected = activeServer == StreamServer.TRAILER,
+                            onClick = { onServerSelect(StreamServer.TRAILER) }
                         )
                     }
 
-                    // Action bar with Server Switcher, CC Subtitle Track Selector, and Fullscreen button
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween
+                    // Direct Fullscreen Button in Bottom Corner
+                    IconButton(
+                        onClick = onToggleFullscreen,
+                        modifier = Modifier
+                            .size(34.dp)
+                            .testTag("fullscreen_toggle_button")
                     ) {
-                        // Server Switcher Buttons
-                        Row(
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            ServerChip(
-                                label = "Server 1",
-                                isSelected = activeServer == StreamServer.SERVER_1,
-                                onClick = { onServerSelect(StreamServer.SERVER_1) }
-                            )
-                            ServerChip(
-                                label = "Server 2",
-                                isSelected = activeServer == StreamServer.SERVER_2,
-                                onClick = { onServerSelect(StreamServer.SERVER_2) }
-                            )
-                            ServerChip(
-                                label = "Trailer",
-                                isSelected = activeServer == StreamServer.TRAILER,
-                                onClick = { onServerSelect(StreamServer.TRAILER) }
-                            )
-                        }
-
-                        // Right side icons: Subtitles (CC) and Fullscreen
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(6.dp)
-                        ) {
-                            // Subtitles (CC) Button & Menu
-                            Box {
-                                IconButton(
-                                    onClick = { showSubtitleMenu = !showSubtitleMenu },
-                                    modifier = Modifier
-                                        .size(38.dp)
-                                        .clip(CircleShape)
-                                        .background(
-                                            if (selectedSubtitleTrack != SubtitleTrack.OFF)
-                                                ImmNetflixRed.copy(alpha = 0.25f)
-                                            else Color.White.copy(alpha = 0.1f)
-                                        )
-                                        .testTag("subtitle_cc_button")
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.ClosedCaption,
-                                        contentDescription = "Subtitles Track Selector",
-                                        tint = if (selectedSubtitleTrack != SubtitleTrack.OFF) ImmNetflixRed else Color.White,
-                                        modifier = Modifier.size(24.dp)
-                                    )
-                                }
-
-                                DropdownMenu(
-                                    expanded = showSubtitleMenu,
-                                    onDismissRequest = { showSubtitleMenu = false },
-                                    modifier = Modifier.background(ImmSurface)
-                                ) {
-                                    Text(
-                                        text = "اختر لغة الترجمة (Subtitles)",
-                                        fontSize = 11.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        color = ImmTextMuted,
-                                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp)
-                                    )
-
-                                    SubtitleTrack.ALL.forEach { track ->
-                                        val isSelected = selectedSubtitleTrack == track
-                                        DropdownMenuItem(
-                                            text = {
-                                                Row(
-                                                    verticalAlignment = Alignment.CenterVertically,
-                                                    horizontalArrangement = Arrangement.SpaceBetween,
-                                                    modifier = Modifier.fillMaxWidth()
-                                                ) {
-                                                    Text(
-                                                        text = track.name,
-                                                        fontSize = 13.sp,
-                                                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                                                        color = if (isSelected) ImmNetflixRed else ImmTextPrimary
-                                                    )
-                                                    if (isSelected) {
-                                                        Icon(
-                                                            imageVector = Icons.Default.Check,
-                                                            contentDescription = null,
-                                                            tint = ImmNetflixRed,
-                                                            modifier = Modifier.size(16.dp)
-                                                        )
-                                                    }
-                                                }
-                                            },
-                                            onClick = {
-                                                selectedSubtitleTrack = track
-                                                showSubtitleMenu = false
-                                                webViewRef?.evaluateJavascript(
-                                                    "setSubtitleTrack('${track.id}');",
-                                                    null
-                                                )
-                                            }
-                                        )
-                                    }
-                                }
-                            }
-
-                            // Fullscreen Toggle
-                            IconButton(
-                                onClick = onToggleFullscreen,
-                                modifier = Modifier
-                                    .size(38.dp)
-                                    .testTag("fullscreen_toggle_button")
-                            ) {
-                                Icon(
-                                    imageVector = if (isFullscreen) Icons.Default.FullscreenExit else Icons.Default.Fullscreen,
-                                    contentDescription = if (isFullscreen) "Exit Fullscreen" else "Enter Fullscreen",
-                                    tint = Color.White,
-                                    modifier = Modifier.size(26.dp)
-                                )
-                            }
-                        }
+                        Icon(
+                            imageVector = if (isFullscreen) Icons.Default.FullscreenExit else Icons.Default.Fullscreen,
+                            contentDescription = "Fullscreen",
+                            tint = Color.White,
+                            modifier = Modifier.size(24.dp)
+                        )
                     }
                 }
             }
@@ -546,8 +495,8 @@ private fun ServerChip(
 ) {
     Surface(
         onClick = onClick,
-        shape = RoundedCornerShape(16.dp),
-        color = if (isSelected) ImmNetflixRed else Color.White.copy(alpha = 0.15f),
+        shape = RoundedCornerShape(14.dp),
+        color = if (isSelected) ImmNetflixRed else Color.White.copy(alpha = 0.18f),
         modifier = Modifier.height(28.dp)
     ) {
         Box(
@@ -557,7 +506,7 @@ private fun ServerChip(
             Text(
                 text = label,
                 fontSize = 11.sp,
-                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
                 color = Color.White
             )
         }

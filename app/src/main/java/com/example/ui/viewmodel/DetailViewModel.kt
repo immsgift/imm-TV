@@ -12,9 +12,10 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
 enum class StreamServer(val displayName: String, val badge: String) {
-    SERVER_1("Server 1 (Ultra Fast)", "HD"),
-    SERVER_2("Server 2 (StreamMax)", "4K"),
-    TRAILER("Official Trailer", "TRAILER")
+    SERVER_1("سيرفر البث 1 (VidSrc)", "FULL MOVIE"),
+    SERVER_2("سيرفر البث 2 (Embed.su)", "FULL MOVIE"),
+    SERVER_3("سيرفر البث 3 (VidSrc.xyz)", "FULL MOVIE"),
+    TRAILER("الإعلان الترويجي (Trailer)", "TRAILER")
 }
 
 data class DetailUiState(
@@ -26,7 +27,11 @@ data class DetailUiState(
     val isFullscreen: Boolean = false,
     val similarMovies: List<Movie> = emptyList(),
     val playbackUrl: String = "",
-    val customSubtitleUrl: String = ""
+    val customSubtitleUrl: String = "",
+    val isBaseServerConfigured: Boolean = true,
+    val baseServerUrl: String = "",
+    val currentSeason: Int = 1,
+    val currentEpisode: Int = 1
 )
 
 class DetailViewModel(
@@ -47,14 +52,19 @@ class DetailViewModel(
             val movie = repository.getMovieById(movieId) ?: MockMoviesData.heroMovie
             val similar = MockMoviesData.allMovies.filter { it.id != movie.id }.take(6)
 
+            val baseServer = repository.getBaseStreamServerUrl().trim()
+            val initialUrl = getUrlForServer(movie, StreamServer.SERVER_1, season = 1, episode = 1)
+
             repository.isWatchlisted(movie.id).collect { isSaved ->
-                val currentUrl = getUrlForServer(movie, _uiState.value.activeServer)
                 _uiState.value = _uiState.value.copy(
                     movie = movie,
                     isLoading = false,
                     isWatchlisted = isSaved,
                     similarMovies = similar,
-                    playbackUrl = currentUrl
+                    activeServer = StreamServer.SERVER_1,
+                    isBaseServerConfigured = true,
+                    baseServerUrl = baseServer,
+                    playbackUrl = initialUrl
                 )
             }
         }
@@ -68,6 +78,16 @@ class DetailViewModel(
             playbackUrl = url,
             isPlayerActive = true
         )
+    }
+
+    fun selectSeasonAndEpisode(season: Int, episode: Int) {
+        val movie = _uiState.value.movie ?: return
+        _uiState.value = _uiState.value.copy(
+            currentSeason = season,
+            currentEpisode = episode
+        )
+        val url = getUrlForServer(movie, _uiState.value.activeServer, season, episode)
+        _uiState.value = _uiState.value.copy(playbackUrl = url)
     }
 
     fun setCustomPlayback(streamUrl: String, subtitleUrl: String) {
@@ -97,18 +117,25 @@ class DetailViewModel(
         }
     }
 
-    private fun getUrlForServer(movie: Movie, server: StreamServer): String {
+    fun getUrlForServer(
+        movie: Movie,
+        server: StreamServer,
+        season: Int = _uiState.value.currentSeason,
+        episode: Int = _uiState.value.currentEpisode
+    ): String {
         return when (server) {
             StreamServer.SERVER_1 -> {
-                if (movie.server1StreamUrl.isNotBlank()) movie.server1StreamUrl
-                else "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4"
+                repository.buildDynamicStreamUrl(movie, season, episode, serverIndex = 1)
             }
             StreamServer.SERVER_2 -> {
-                if (movie.server2StreamUrl.isNotBlank()) movie.server2StreamUrl
-                else "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/TearsOfSteel.mp4"
+                repository.buildDynamicStreamUrl(movie, season, episode, serverIndex = 2)
+            }
+            StreamServer.SERVER_3 -> {
+                repository.buildDynamicStreamUrl(movie, season, episode, serverIndex = 3)
             }
             StreamServer.TRAILER -> {
-                "https://www.youtube.com/embed/${movie.trailerYoutubeId}?autoplay=1&playsinline=1"
+                val trailerId = movie.trailerYoutubeId.ifBlank { "dQw4w9WgXcQ" }
+                "https://www.youtube.com/embed/$trailerId?autoplay=1&playsinline=1"
             }
         }
     }

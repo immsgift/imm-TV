@@ -89,6 +89,7 @@ fun SettingsScreen(
         )
     }
     var customTestSubtitleUrl by remember { mutableStateOf(repository.getCustomSubtitleUrl()) }
+    var baseStreamServerUrl by remember { mutableStateOf(repository.getBaseStreamServerUrl()) }
     var isTestingPlayer by remember { mutableStateOf(false) }
 
     LazyColumn(
@@ -329,6 +330,196 @@ fun SettingsScreen(
                             onCheckedChange = { autoPlayNextEnabled = it },
                             colors = SwitchDefaults.colors(checkedThumbColor = Color.White, checkedTrackColor = ImmNetflixRed)
                         )
+                    }
+                }
+            }
+        }
+
+        // Section: Base Stream Server URL
+        item {
+            Card(
+                shape = RoundedCornerShape(14.dp),
+                colors = CardDefaults.cardColors(containerColor = ImmCardSurface),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Box(
+                                modifier = Modifier
+                                    .size(36.dp)
+                                    .clip(CircleShape)
+                                    .background(ImmNetflixRed.copy(alpha = 0.15f)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Tv,
+                                    contentDescription = null,
+                                    tint = ImmNetflixRed,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
+                            Spacer(modifier = Modifier.width(10.dp))
+                            Text(
+                                text = "Base Stream Server URL",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = ImmTextPrimary
+                            )
+                        }
+
+                        Surface(
+                            shape = RoundedCornerShape(4.dp),
+                            color = if (baseStreamServerUrl.isNotBlank()) Color(0xFF1B5E20) else Color(0xFFE65100)
+                        ) {
+                            Text(
+                                text = if (baseStreamServerUrl.isNotBlank()) "Active (خادم مخصص)" else "Official Trailer (تريلر TMDb)",
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.White,
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    Text(
+                        text = "يقوم مشغل الفيديو بتركيب رابط المشاهدة تلقائياً بالصيغة الديناميكية:\n• للأفلام: \${baseServerUrl}/movie/\${tmdb_id}\n• للمسلسلات: \${baseServerUrl}/tv/\${tmdb_id}/\${season}/\${episode}\nوفي حال ترك الحقل فارغاً، يعرض المشغل التريلر الرسمي للفيلم عبر TMDb Videos تلقائياً.",
+                        fontSize = 12.sp,
+                        color = ImmTextSecondary,
+                        lineHeight = 18.sp
+                    )
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    OutlinedTextField(
+                        value = baseStreamServerUrl,
+                        onValueChange = { baseStreamServerUrl = it },
+                        label = { Text("Base Stream Server URL") },
+                        placeholder = { Text("https://vidsrc.to/embed") },
+                        singleLine = true,
+                        shape = RoundedCornerShape(10.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedContainerColor = ImmSurfaceVariant,
+                            unfocusedContainerColor = ImmSurfaceVariant,
+                            focusedBorderColor = ImmNetflixRed,
+                            unfocusedBorderColor = Color.Transparent,
+                            focusedTextColor = Color.White,
+                            unfocusedTextColor = Color.White
+                        ),
+                        modifier = Modifier.fillMaxWidth().testTag("base_stream_server_input")
+                    )
+
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    Text(
+                        text = "سيرفرات بث جاهزة (1-Click Presets):",
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = ImmTextMuted
+                    )
+                    Spacer(modifier = Modifier.height(6.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Surface(
+                            onClick = {
+                                baseStreamServerUrl = "https://vidsrc.to/embed"
+                                repository.setBaseStreamServerUrl(baseStreamServerUrl)
+                                Toast.makeText(context, "تم تفعيل خادم VidSrc.to بنجاح!", Toast.LENGTH_SHORT).show()
+                            },
+                            shape = RoundedCornerShape(8.dp),
+                            color = ImmSurfaceVariant,
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Text(
+                                text = "⚡ VidSrc.to",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.White,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp)
+                            )
+                        }
+
+                        Surface(
+                            onClick = {
+                                baseStreamServerUrl = "https://embed.su/embed"
+                                repository.setBaseStreamServerUrl(baseStreamServerUrl)
+                                Toast.makeText(context, "تم تفعيل خادم Embed.su بنجاح!", Toast.LENGTH_SHORT).show()
+                            },
+                            shape = RoundedCornerShape(8.dp),
+                            color = ImmSurfaceVariant,
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Text(
+                                text = "🎬 Embed.su",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.White,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp)
+                            )
+                        }
+
+                        Surface(
+                            onClick = {
+                                baseStreamServerUrl = "https://vidsrc.xyz/embed"
+                                repository.setBaseStreamServerUrl(baseStreamServerUrl)
+                                Toast.makeText(context, "تم تفعيل خادم VidSrc.xyz بنجاح!", Toast.LENGTH_SHORT).show()
+                            },
+                            shape = RoundedCornerShape(8.dp),
+                            color = ImmSurfaceVariant,
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Text(
+                                text = "🚀 VidSrc.xyz",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.White,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp)
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        OutlinedButton(
+                            onClick = {
+                                baseStreamServerUrl = ""
+                                repository.setBaseStreamServerUrl("")
+                                Toast.makeText(context, "تم مسح الرابط وتفعيل تشغيل التريلر الرسمي", Toast.LENGTH_SHORT).show()
+                            },
+                            shape = RoundedCornerShape(8.dp),
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Icon(imageVector = Icons.Default.Close, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(text = "مسح (Trailers)", fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+                        }
+
+                        Button(
+                            onClick = {
+                                repository.setBaseStreamServerUrl(baseStreamServerUrl)
+                                Toast.makeText(context, "تم حفظ Base Stream Server URL في التخزين المحلي!", Toast.LENGTH_SHORT).show()
+                            },
+                            colors = ButtonDefaults.buttonColors(containerColor = ImmNetflixRed),
+                            shape = RoundedCornerShape(8.dp),
+                            modifier = Modifier.weight(1f).testTag("save_base_stream_server_button")
+                        ) {
+                            Icon(imageVector = Icons.Default.Check, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(text = "حفظ الرابط", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                        }
                     }
                 }
             }

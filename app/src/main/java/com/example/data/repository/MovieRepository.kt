@@ -30,6 +30,7 @@ class MovieRepository(
         private const val KEY_TMDB_API_KEY = "tmdb_api_key"
         private const val KEY_CUSTOM_STREAM_URL = "custom_stream_url"
         private const val KEY_CUSTOM_SUBTITLE_URL = "custom_subtitle_url"
+        private const val KEY_BASE_STREAM_SERVER_URL = "base_stream_server_url"
         private const val DEFAULT_STREAM_1 = "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4"
         private const val DEFAULT_STREAM_2 = "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/TearsOfSteel.mp4"
 
@@ -95,6 +96,31 @@ class MovieRepository(
 
     fun setCustomSubtitleUrl(url: String) {
         prefs?.edit()?.putString(KEY_CUSTOM_SUBTITLE_URL, url.trim())?.apply()
+    }
+
+    fun getBaseStreamServerUrl(): String {
+        val saved = prefs?.getString(KEY_BASE_STREAM_SERVER_URL, null)
+        if (saved != null) return saved
+        return "https://vidsrc.to/embed"
+    }
+
+    fun setBaseStreamServerUrl(url: String) {
+        prefs?.edit()?.putString(KEY_BASE_STREAM_SERVER_URL, url.trim())?.apply()
+    }
+
+    fun buildDynamicStreamUrl(movie: Movie, season: Int = 1, episode: Int = 1, serverIndex: Int = 1): String {
+        val customBase = getBaseStreamServerUrl().trim().removeSuffix("/")
+        val baseUrl = when (serverIndex) {
+            1 -> if (customBase.isNotBlank()) customBase else "https://vidsrc.to/embed"
+            2 -> "https://embed.su/embed"
+            3 -> "https://vidsrc.xyz/embed"
+            else -> "https://vidsrc.to/embed"
+        }
+        return if (movie.isTvShow) {
+            "$baseUrl/tv/${movie.id}/$season/$episode"
+        } else {
+            "$baseUrl/movie/${movie.id}"
+        }
     }
 
     fun getTrendingMovies(): Flow<List<Movie>> = flow {

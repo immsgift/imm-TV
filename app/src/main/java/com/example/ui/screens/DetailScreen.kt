@@ -27,6 +27,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Fullscreen
 import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Share
@@ -180,9 +181,11 @@ fun DetailScreen(
                             modifier = Modifier
                                 .size(64.dp)
                                 .clip(CircleShape)
-                                .background(ImmNetflixRed.copy(alpha = 0.9f))
+                                .background(ImmNetflixRed.copy(alpha = 0.95f))
                                 .align(Alignment.Center)
-                                .clickable { viewModel.togglePlayer(true) }
+                                .clickable {
+                                    onOpenFullscreenPlayer(movie.id, uiState.activeServer.name)
+                                }
                                 .testTag("backdrop_play_button"),
                             contentAlignment = Alignment.Center
                         ) {
@@ -322,18 +325,18 @@ fun DetailScreen(
 
                     Spacer(modifier = Modifier.height(16.dp))
 
-                    // Stream Server Action Buttons: "Server 1" & "Server 2"
+                    // Stream Server Action Header
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = "SELECT STREAMING SERVER:",
+                            text = if (uiState.isBaseServerConfigured) "STREAM SERVER (ACTIVE):" else "PLAYBACK & TRAILER:",
                             fontSize = 11.sp,
                             fontWeight = FontWeight.Bold,
                             letterSpacing = 1.sp,
-                            color = ImmTextMuted
+                            color = if (uiState.isBaseServerConfigured) Color(0xFF81C784) else ImmTextMuted
                         )
 
                         // Quick Custom URL test button
@@ -359,66 +362,228 @@ fun DetailScreen(
 
                     Spacer(modifier = Modifier.height(8.dp))
 
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    // Dynamic Stream Banner
+                    Surface(
+                        shape = RoundedCornerShape(10.dp),
+                        color = Color(0xFF1E2028),
+                        modifier = Modifier.fillMaxWidth()
                     ) {
-                        Button(
-                            onClick = {
-                                viewModel.selectServer(StreamServer.SERVER_1)
-                            },
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = if (uiState.activeServer == StreamServer.SERVER_1 && uiState.isPlayerActive)
-                                    ImmNetflixRed else Color(0xFF262638)
-                            ),
-                            shape = RoundedCornerShape(10.dp),
-                            modifier = Modifier
-                                .weight(1f)
-                                .height(48.dp)
-                                .testTag("watch_server1_button")
+                        Column(modifier = Modifier.padding(12.dp)) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Surface(
+                                        color = Color(0xFF1B5E20),
+                                        shape = RoundedCornerShape(4.dp)
+                                    ) {
+                                        Text(
+                                            text = "FULL MOVIE (فيلم كامل)",
+                                            fontSize = 9.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = Color.White,
+                                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                        )
+                                    }
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text(
+                                        text = if (movie.isTvShow) "حلقة كاملة • ${movie.runtime}" else "الفيلم كاملاً • ${movie.runtime}",
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color.White
+                                    )
+                                }
+
+                                Surface(
+                                    color = Color(0xFF263238),
+                                    shape = RoundedCornerShape(4.dp)
+                                ) {
+                                    Text(
+                                        text = "بدون إعلانات مزعجة",
+                                        fontSize = 9.sp,
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = Color(0xFF81C784),
+                                        modifier = Modifier.padding(horizontal = 5.dp, vertical = 2.dp)
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    // TV Show: Interactive Season & Episode Picker
+                    if (movie.isTvShow) {
+                        Spacer(modifier = Modifier.height(10.dp))
+                        Text(
+                            text = "اختر الموسم والحلقة (EPISODES):",
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = 1.sp,
+                            color = ImmTextMuted
+                        )
+                        Spacer(modifier = Modifier.height(6.dp))
+
+                        // Seasons Row
+                        LazyRow(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            modifier = Modifier.fillMaxWidth()
                         ) {
-                            Icon(
-                                imageVector = Icons.Default.PlayArrow,
-                                contentDescription = null,
-                                tint = Color.White,
-                                modifier = Modifier.size(18.dp)
-                            )
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text(
-                                text = "Server 1 (Fast)",
-                                fontSize = 13.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = Color.White
-                            )
+                            items(listOf(1, 2, 3, 4, 5)) { seasonNum ->
+                                val isSelected = uiState.currentSeason == seasonNum
+                                Surface(
+                                    onClick = { viewModel.selectSeasonAndEpisode(seasonNum, uiState.currentEpisode) },
+                                    shape = RoundedCornerShape(8.dp),
+                                    color = if (isSelected) ImmNetflixRed else Color(0xFF262638),
+                                    modifier = Modifier.height(32.dp)
+                                ) {
+                                    Box(
+                                        contentAlignment = Alignment.Center,
+                                        modifier = Modifier.padding(horizontal = 12.dp)
+                                    ) {
+                                        Text(
+                                            text = "الموسم $seasonNum",
+                                            fontSize = 11.sp,
+                                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                                            color = Color.White
+                                        )
+                                    }
+                                }
+                            }
                         }
 
-                        Button(
-                            onClick = {
-                                viewModel.selectServer(StreamServer.SERVER_2)
-                            },
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = if (uiState.activeServer == StreamServer.SERVER_2 && uiState.isPlayerActive)
-                                    ImmNetflixRed else Color(0xFF262638)
-                            ),
-                            shape = RoundedCornerShape(10.dp),
-                            modifier = Modifier
-                                .weight(1f)
-                                .height(48.dp)
-                                .testTag("watch_server2_button")
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        // Episodes Row
+                        LazyRow(
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            modifier = Modifier.fillMaxWidth()
                         ) {
-                            Icon(
-                                imageVector = Icons.Default.PlayArrow,
-                                contentDescription = null,
-                                tint = Color.White,
-                                modifier = Modifier.size(18.dp)
-                            )
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text(
-                                text = "Server 2 (4K)",
-                                fontSize = 13.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = Color.White
-                            )
+                            items((1..12).toList()) { epNum ->
+                                val isSelected = uiState.currentEpisode == epNum
+                                Surface(
+                                    onClick = { viewModel.selectSeasonAndEpisode(uiState.currentSeason, epNum) },
+                                    shape = RoundedCornerShape(6.dp),
+                                    color = if (isSelected) ImmNetflixRed else Color(0xFF1E2028),
+                                    modifier = Modifier.height(30.dp)
+                                ) {
+                                    Box(
+                                        contentAlignment = Alignment.Center,
+                                        modifier = Modifier.padding(horizontal = 10.dp)
+                                    ) {
+                                        Text(
+                                            text = "الحلقة $epNum",
+                                            fontSize = 11.sp,
+                                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                                            color = Color.White
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    // Primary Watch Full Movie Button
+                    Button(
+                        onClick = {
+                            onOpenFullscreenPlayer(movie.id, uiState.activeServer.name)
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = ImmNetflixRed),
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(52.dp)
+                            .testTag("watch_fullscreen_stream_button")
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.PlayArrow,
+                            contentDescription = null,
+                            tint = Color.White,
+                            modifier = Modifier.size(24.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = if (movie.isTvShow) "▶ شاهد الحلقة كاملاً (S${uiState.currentSeason}:E${uiState.currentEpisode})" else "▶ شاهد الفيلم كاملاً (${movie.runtime})",
+                            fontSize = 15.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    // Server Selection Chips: Server 1, Server 2, Server 3, Inline Player
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Surface(
+                            onClick = { viewModel.selectServer(StreamServer.SERVER_1) },
+                            shape = RoundedCornerShape(8.dp),
+                            color = if (uiState.activeServer == StreamServer.SERVER_1) ImmNetflixRed else Color(0xFF262638),
+                            modifier = Modifier.weight(1f).height(38.dp)
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Text(
+                                    text = "سيرفر 1",
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color.White
+                                )
+                            }
+                        }
+
+                        Surface(
+                            onClick = { viewModel.selectServer(StreamServer.SERVER_2) },
+                            shape = RoundedCornerShape(8.dp),
+                            color = if (uiState.activeServer == StreamServer.SERVER_2) ImmNetflixRed else Color(0xFF262638),
+                            modifier = Modifier.weight(1f).height(38.dp)
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Text(
+                                    text = "سيرفر 2",
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color.White
+                                )
+                            }
+                        }
+
+                        Surface(
+                            onClick = { viewModel.selectServer(StreamServer.SERVER_3) },
+                            shape = RoundedCornerShape(8.dp),
+                            color = if (uiState.activeServer == StreamServer.SERVER_3) ImmNetflixRed else Color(0xFF262638),
+                            modifier = Modifier.weight(1f).height(38.dp)
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Text(
+                                    text = "سيرفر 3",
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color.White
+                                )
+                            }
+                        }
+
+                        Surface(
+                            onClick = {
+                                viewModel.togglePlayer(true)
+                            },
+                            shape = RoundedCornerShape(8.dp),
+                            color = if (uiState.isPlayerActive) Color(0xFF455A64) else Color(0xFF262638),
+                            modifier = Modifier.weight(1.1f).height(38.dp)
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Text(
+                                    text = if (uiState.isPlayerActive) "إغلاق المدمج" else "تشغيل مدمج",
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = Color.White
+                                )
+                            }
                         }
                     }
 

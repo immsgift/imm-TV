@@ -2,30 +2,81 @@ package com.example.data.util
 
 object SubtitleProvider {
 
+    fun isIframeUrl(url: String): Boolean {
+        val clean = url.trim().lowercase()
+        if (clean.isBlank()) return false
+        if (clean.contains("youtube.com") || clean.contains("youtu.be")) return true
+        if (clean.contains("/movie/") || clean.contains("/tv/") || clean.contains("embed")) return true
+        if (clean.startsWith("http") && !clean.endsWith(".mp4") && !clean.endsWith(".m3u8") && !clean.endsWith(".webm") && !clean.endsWith(".mkv")) return true
+        return false
+    }
+
     fun generatePlayerHtml(
         videoUrl: String,
         customSubtitleUrl: String = "",
         initialTrackId: String = "ar"
     ): String {
         val isYoutube = videoUrl.contains("youtube.com") || videoUrl.contains("youtu.be")
-        if (isYoutube) {
-            val urlWithParams = if (videoUrl.contains("?")) {
-                "$videoUrl&cc_load_policy=1&hl=ar"
+        val isEmbed = isIframeUrl(videoUrl)
+
+        if (isYoutube || isEmbed) {
+            val finalUrl = if (isYoutube) {
+                if (videoUrl.contains("?")) {
+                    "$videoUrl&cc_load_policy=1&hl=ar"
+                } else {
+                    "$videoUrl?cc_load_policy=1&hl=ar"
+                }
             } else {
-                "$videoUrl?cc_load_policy=1&hl=ar"
+                videoUrl
             }
             return """
             <!DOCTYPE html>
-            <html>
+            <html lang="en">
             <head>
+                <meta charset="UTF-8">
                 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
                 <style>
-                    body, html { margin:0; padding:0; width:100%; height:100%; background:#0e0e12; overflow:hidden; }
-                    iframe { width:100%; height:100%; border:none; }
+                    * { margin:0; padding:0; box-sizing:border-box; }
+                    html, body {
+                        width: 100%;
+                        height: 100%;
+                        margin: 0;
+                        padding: 0;
+                        background: #000000;
+                        overflow: hidden;
+                    }
+                    .responsive-player-container {
+                        position: relative;
+                        width: 100%;
+                        height: 100%;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        background: #000000;
+                    }
+                    iframe {
+                        position: absolute;
+                        top: 0;
+                        left: 0;
+                        width: 100%;
+                        height: 100%;
+                        border: 0;
+                        outline: none;
+                        display: block;
+                    }
                 </style>
             </head>
             <body>
-                <iframe src="$urlWithParams" allow="autoplay; encrypted-media; fullscreen" allowfullscreen></iframe>
+                <div class="responsive-player-container">
+                    <iframe 
+                        src="$finalUrl" 
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen" 
+                        allowfullscreen="true" 
+                        webkitallowfullscreen="true" 
+                        mozallowfullscreen="true"
+                        scrolling="no">
+                    </iframe>
+                </div>
             </body>
             </html>
             """.trimIndent()
