@@ -23,12 +23,38 @@ data class TmdbMovieDto(
     @Json(name = "first_air_date") val firstAirDate: String? = null,
     @Json(name = "vote_average") val voteAverage: Double? = null,
     @Json(name = "vote_count") val voteCount: Int? = null,
-    @Json(name = "genre_ids") val genreIds: List<Int>? = null
+    @Json(name = "genre_ids") val genreIds: List<Int>? = null,
+    @Json(name = "media_type") val mediaType: String? = null
+)
+
+@JsonClass(generateAdapter = true)
+data class TmdbMovieDetailsDto(
+    @Json(name = "id") val id: Int,
+    @Json(name = "title") val title: String? = null,
+    @Json(name = "name") val name: String? = null,
+    @Json(name = "overview") val overview: String? = null,
+    @Json(name = "poster_path") val posterPath: String? = null,
+    @Json(name = "backdrop_path") val backdropPath: String? = null,
+    @Json(name = "release_date") val releaseDate: String? = null,
+    @Json(name = "first_air_date") val firstAirDate: String? = null,
+    @Json(name = "vote_average") val voteAverage: Double? = null,
+    @Json(name = "vote_count") val voteCount: Int? = null,
+    @Json(name = "runtime") val runtime: Int? = null,
+    @Json(name = "episode_run_time") val episodeRunTime: List<Int>? = null,
+    @Json(name = "genres") val genres: List<TmdbGenreDto>? = null,
+    @Json(name = "videos") val videos: TmdbVideosResponse? = null,
+    @Json(name = "credits") val credits: TmdbCreditsResponse? = null
+)
+
+@JsonClass(generateAdapter = true)
+data class TmdbGenreDto(
+    @Json(name = "id") val id: Int,
+    @Json(name = "name") val name: String
 )
 
 @JsonClass(generateAdapter = true)
 data class TmdbCreditsResponse(
-    @Json(name = "id") val id: Int,
+    @Json(name = "id") val id: Int? = null,
     @Json(name = "cast") val cast: List<TmdbCastDto> = emptyList()
 )
 
@@ -38,4 +64,20 @@ data class TmdbCastDto(
     @Json(name = "name") val name: String,
     @Json(name = "character") val character: String? = null,
     @Json(name = "profile_path") val profilePath: String? = null
+)
+
+@JsonClass(generateAdapter = true)
+data class TmdbVideosResponse(
+    @Json(name = "id") val id: Int? = null,
+    @Json(name = "results") val results: List<TmdbVideoDto> = emptyList()
+)
+
+@JsonClass(generateAdapter = true)
+data class TmdbVideoDto(
+    @Json(name = "id") val id: String? = null,
+    @Json(name = "key") val key: String,
+    @Json(name = "name") val name: String? = null,
+    @Json(name = "site") val site: String? = null,
+    @Json(name = "type") val type: String? = null,
+    @Json(name = "official") val official: Boolean? = null
 )

@@ -5,6 +5,8 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.example.data.model.Movie
 import com.example.data.repository.MovieRepository
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -25,13 +27,21 @@ class SearchViewModel(
     private val _uiState = MutableStateFlow(SearchUiState())
     val uiState: StateFlow<SearchUiState> = _uiState.asStateFlow()
 
+    private var searchJob: Job? = null
+
     init {
         performSearch()
     }
 
     fun onQueryChange(newQuery: String) {
         _uiState.value = _uiState.value.copy(query = newQuery)
-        performSearch()
+        searchJob?.cancel()
+        searchJob = viewModelScope.launch {
+            if (newQuery.isNotBlank()) {
+                delay(300) // slight debounce for live typing
+            }
+            performSearchInternal()
+        }
     }
 
     fun onCategorySelect(category: String) {
@@ -45,16 +55,24 @@ class SearchViewModel(
     }
 
     private fun performSearch() {
-        viewModelScope.launch {
-            _uiState.value = _uiState.value.copy(isLoading = true)
-            repository.searchMovies(_uiState.value.query, _uiState.value.selectedCategory)
-                .collect { list ->
-                    _uiState.value = _uiState.value.copy(
-                        results = list,
-                        isLoading = false
-                    )
-                }
+        searchJob?.cancel()
+        searchJob = viewModelScope.launch {
+            performSearchInternal()
         }
+    }
+
+    private suspend fun performSearchInternal() {
+        _uiState.value = _uiState.value.copy(isLoading = true)
+        val query = _uiState.value.query
+        val category = _uiState.value.selectedCategory
+
+        repository.searchMovies(query, category)
+            .collect { list ->
+                _uiState.value = _uiState.value.copy(
+                    results = list,
+                    isLoading = false
+                )
+            }
     }
 }
 

@@ -36,12 +36,14 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.foundation.layout.aspectRatio
 import com.example.ui.components.VideoPlayerView
 import com.example.ui.viewmodel.StreamServer
@@ -79,8 +81,14 @@ fun SettingsScreen(
     var selectedServer by remember { mutableStateOf("Server 1 (Ultra Fast)") }
     var hardwareAccelEnabled by remember { mutableStateOf(true) }
     var autoPlayNextEnabled by remember { mutableStateOf(true) }
-    var customTestStreamUrl by remember { mutableStateOf("https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4") }
-    var customTestSubtitleUrl by remember { mutableStateOf("") }
+    var customTestStreamUrl by remember {
+        mutableStateOf(
+            repository.getCustomStreamUrl().ifBlank {
+                "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4"
+            }
+        )
+    }
+    var customTestSubtitleUrl by remember { mutableStateOf(repository.getCustomSubtitleUrl()) }
     var isTestingPlayer by remember { mutableStateOf(false) }
 
     LazyColumn(
@@ -190,20 +198,34 @@ fun SettingsScreen(
 
                     Spacer(modifier = Modifier.height(10.dp))
 
-                    Button(
-                        onClick = {
-                            repository.setCustomApiKey(tmdbApiKey)
-                            Toast.makeText(context, "API Key updated successfully!", Toast.LENGTH_SHORT).show()
-                        },
-                        colors = ButtonDefaults.buttonColors(containerColor = ImmNetflixRed),
-                        shape = RoundedCornerShape(8.dp),
-                        modifier = Modifier
-                            .align(Alignment.End)
-                            .testTag("save_api_key_button")
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Icon(imageVector = Icons.Default.Check, contentDescription = null, modifier = Modifier.size(16.dp))
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text(text = "Save Key", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                        TextButton(
+                            onClick = {
+                                tmdbApiKey = MovieRepository.DEFAULT_TMDB_API_KEY
+                                repository.setCustomApiKey(MovieRepository.DEFAULT_TMDB_API_KEY)
+                                Toast.makeText(context, "Default TMDb key restored!", Toast.LENGTH_SHORT).show()
+                            }
+                        ) {
+                            Text(text = "Restore Default Key", fontSize = 11.sp, color = ImmTextSecondary)
+                        }
+
+                        Button(
+                            onClick = {
+                                repository.setCustomApiKey(tmdbApiKey)
+                                Toast.makeText(context, "API Key updated and saved!", Toast.LENGTH_SHORT).show()
+                            },
+                            colors = ButtonDefaults.buttonColors(containerColor = ImmNetflixRed),
+                            shape = RoundedCornerShape(8.dp),
+                            modifier = Modifier.testTag("save_api_key_button")
+                        ) {
+                            Icon(imageVector = Icons.Default.Check, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(text = "Save Key", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                        }
                     }
                 }
             }
@@ -455,25 +477,48 @@ fun SettingsScreen(
 
                     Spacer(modifier = Modifier.height(12.dp))
 
-                    Button(
-                        onClick = { isTestingPlayer = !isTestingPlayer },
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = if (isTestingPlayer) Color(0xFF37474F) else ImmNetflixRed
-                        ),
-                        shape = RoundedCornerShape(8.dp),
-                        modifier = Modifier.fillMaxWidth()
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        Icon(
-                            imageVector = if (isTestingPlayer) Icons.Default.Close else Icons.Default.PlayArrow,
-                            contentDescription = null,
-                            modifier = Modifier.size(16.dp)
-                        )
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text(
-                            text = if (isTestingPlayer) "Close Test Player" else "Test Stream with Arabic Subtitles",
-                            fontSize = 13.sp,
-                            fontWeight = FontWeight.Bold
-                        )
+                        OutlinedButton(
+                            onClick = {
+                                repository.setCustomStreamUrl(customTestStreamUrl)
+                                repository.setCustomSubtitleUrl(customTestSubtitleUrl)
+                                Toast.makeText(context, "Stream URLs saved for app playback!", Toast.LENGTH_SHORT).show()
+                            },
+                            shape = RoundedCornerShape(8.dp),
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Icon(imageVector = Icons.Default.Check, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(text = "Save Stream URL", fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                        }
+
+                        Button(
+                            onClick = {
+                                repository.setCustomStreamUrl(customTestStreamUrl)
+                                repository.setCustomSubtitleUrl(customTestSubtitleUrl)
+                                isTestingPlayer = !isTestingPlayer
+                            },
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = if (isTestingPlayer) Color(0xFF37474F) else ImmNetflixRed
+                            ),
+                            shape = RoundedCornerShape(8.dp),
+                            modifier = Modifier.weight(1.3f)
+                        ) {
+                            Icon(
+                                imageVector = if (isTestingPlayer) Icons.Default.Close else Icons.Default.PlayArrow,
+                                contentDescription = null,
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = if (isTestingPlayer) "Close Player" else "Test with Subtitles",
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
                     }
 
                     if (isTestingPlayer) {

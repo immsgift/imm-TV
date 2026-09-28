@@ -38,15 +38,15 @@ class HomeViewModel(
     fun loadContent() {
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true, errorMessage = null)
-            val hero = MockMoviesData.heroMovie
 
             combine(
                 repository.getTrendingMovies(),
                 repository.getTopRatedMovies(),
                 repository.getActionMovies(),
-                repository.getPopularTvShows(),
-                repository.isWatchlisted(hero.id)
-            ) { trending, topRated, action, tvShows, isHeroSaved ->
+                repository.getPopularTvShows()
+            ) { trending, topRated, action, tvShows ->
+                val hero = trending.firstOrNull { it.backdropPath.isNotBlank() } ?: MockMoviesData.heroMovie
+                val isHeroSaved = false // will be checked below
                 HomeUiState(
                     isLoading = false,
                     heroMovie = hero,
@@ -69,6 +69,15 @@ class HomeViewModel(
                 )
             }.collect { state ->
                 _uiState.value = state
+                checkHeroWatchlist(state.heroMovie.id)
+            }
+        }
+    }
+
+    private fun checkHeroWatchlist(heroId: Int) {
+        viewModelScope.launch {
+            repository.isWatchlisted(heroId).collect { isSaved ->
+                _uiState.value = _uiState.value.copy(isHeroWatchlisted = isSaved)
             }
         }
     }

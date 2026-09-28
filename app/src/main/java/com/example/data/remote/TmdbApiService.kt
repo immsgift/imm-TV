@@ -43,14 +43,57 @@ interface TmdbApiService {
     suspend fun searchMovies(
         @Query("api_key") apiKey: String,
         @Query("query") query: String,
-        @Query("page") page: Int = 1
+        @Query("page") page: Int = 1,
+        @Query("include_adult") includeAdult: Boolean = false
     ): TmdbMovieResponse
+
+    @GET("3/search/tv")
+    suspend fun searchTv(
+        @Query("api_key") apiKey: String,
+        @Query("query") query: String,
+        @Query("page") page: Int = 1,
+        @Query("include_adult") includeAdult: Boolean = false
+    ): TmdbMovieResponse
+
+    @GET("3/search/multi")
+    suspend fun searchMulti(
+        @Query("api_key") apiKey: String,
+        @Query("query") query: String,
+        @Query("page") page: Int = 1,
+        @Query("include_adult") includeAdult: Boolean = false
+    ): TmdbMovieResponse
+
+    @GET("3/movie/{movie_id}")
+    suspend fun getMovieDetails(
+        @Path("movie_id") movieId: Int,
+        @Query("api_key") apiKey: String,
+        @Query("append_to_response") appendToResponse: String = "videos,credits"
+    ): TmdbMovieDetailsDto
+
+    @GET("3/tv/{tv_id}")
+    suspend fun getTvDetails(
+        @Path("tv_id") tvId: Int,
+        @Query("api_key") apiKey: String,
+        @Query("append_to_response") appendToResponse: String = "videos,credits"
+    ): TmdbMovieDetailsDto
 
     @GET("3/movie/{movie_id}/credits")
     suspend fun getMovieCredits(
         @Path("movie_id") movieId: Int,
         @Query("api_key") apiKey: String
     ): TmdbCreditsResponse
+
+    @GET("3/movie/{movie_id}/videos")
+    suspend fun getMovieVideos(
+        @Path("movie_id") movieId: Int,
+        @Query("api_key") apiKey: String
+    ): TmdbVideosResponse
+
+    @GET("3/tv/{tv_id}/videos")
+    suspend fun getTvVideos(
+        @Path("tv_id") tvId: Int,
+        @Query("api_key") apiKey: String
+    ): TmdbVideosResponse
 
     companion object {
         private const val BASE_URL = "https://api.themoviedb.org/"
