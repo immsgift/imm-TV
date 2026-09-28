@@ -139,6 +139,16 @@ fun DetailScreen(
                             onOpenFullscreenPlayer(movie.id, uiState.activeServer.name)
                         },
                         onClosePlayer = { viewModel.togglePlayer(false) },
+                        isTvShow = movie.isTvShow,
+                        currentSeason = uiState.currentSeason,
+                        currentEpisode = uiState.currentEpisode,
+                        onNextEpisode = {
+                            viewModel.selectSeasonAndEpisode(uiState.currentSeason, uiState.currentEpisode + 1)
+                        },
+                        onSelectEpisode = { s, ep ->
+                            viewModel.selectSeasonAndEpisode(s, ep)
+                        },
+                        runtime = movie.runtime,
                         modifier = Modifier
                             .fillMaxWidth()
                             .aspectRatio(16f / 9f)

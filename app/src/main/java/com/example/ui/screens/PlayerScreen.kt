@@ -98,81 +98,24 @@ fun PlayerScreen(
             Box(modifier = Modifier.fillMaxSize()) {
                 VideoPlayerView(
                     videoUrl = playbackUrl,
-                    title = if (currentMovie.isTvShow) "${currentMovie.title} (S$currentSeason:E$currentEpisode)" else currentMovie.title,
+                    title = if (currentMovie.isTvShow) "${currentMovie.title} • S$currentSeason:E$currentEpisode" else currentMovie.title,
                     activeServer = activeServer,
                     onServerSelect = { activeServer = it },
                     customSubtitleUrl = repository.getCustomSubtitleUrl(),
                     isFullscreen = true,
                     onToggleFullscreen = onClose,
                     onClosePlayer = onClose,
+                    isTvShow = currentMovie.isTvShow,
+                    currentSeason = currentSeason,
+                    currentEpisode = currentEpisode,
+                    onNextEpisode = { currentEpisode += 1 },
+                    onSelectEpisode = { s, ep ->
+                        currentSeason = s
+                        currentEpisode = ep
+                    },
+                    runtime = currentMovie.runtime,
                     modifier = Modifier.fillMaxSize()
                 )
-
-                // TV Show episode quick switcher (floating above bottom strip)
-                if (currentMovie.isTvShow && activeServer != StreamServer.TRAILER) {
-                    Surface(
-                        color = Color.Black.copy(alpha = 0.75f),
-                        shape = RoundedCornerShape(topStart = 12.dp, topEnd = 12.dp),
-                        modifier = Modifier
-                            .align(Alignment.BottomCenter)
-                            .padding(bottom = 54.dp)
-                            .fillMaxWidth()
-                    ) {
-                        Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Text(
-                                    text = "الحلقات (Episodes): S$currentSeason:E$currentEpisode",
-                                    fontSize = 11.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = Color.White
-                                )
-                                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                                    (1..3).forEach { s ->
-                                        Surface(
-                                            onClick = { currentSeason = s },
-                                            color = if (currentSeason == s) ImmNetflixRed else Color.White.copy(alpha = 0.15f),
-                                            shape = RoundedCornerShape(4.dp)
-                                        ) {
-                                            Text(
-                                                text = "S$s",
-                                                fontSize = 10.sp,
-                                                fontWeight = FontWeight.Bold,
-                                                color = Color.White,
-                                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                                            )
-                                        }
-                                    }
-                                }
-                            }
-                            Spacer(modifier = Modifier.height(4.dp))
-                            LazyRow(
-                                horizontalArrangement = Arrangement.spacedBy(6.dp),
-                                contentPadding = PaddingValues(end = 8.dp)
-                            ) {
-                                items((1..10).toList()) { ep ->
-                                    val isSelected = currentEpisode == ep
-                                    Surface(
-                                        onClick = { currentEpisode = ep },
-                                        color = if (isSelected) ImmNetflixRed else Color.White.copy(alpha = 0.15f),
-                                        shape = RoundedCornerShape(6.dp)
-                                    ) {
-                                        Text(
-                                            text = "Ep $ep",
-                                            fontSize = 10.sp,
-                                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                                            color = Color.White,
-                                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                                        )
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
             }
         }
     }
