@@ -109,17 +109,40 @@ class MovieRepository(
     }
 
     fun buildDynamicStreamUrl(movie: Movie, season: Int = 1, episode: Int = 1, serverIndex: Int = 1): String {
-        val customBase = getBaseStreamServerUrl().trim().removeSuffix("/")
-        val baseUrl = when (serverIndex) {
-            1 -> if (customBase.isNotBlank()) customBase else "https://vidsrc.to/embed"
-            2 -> "https://embed.su/embed"
-            3 -> "https://vidsrc.xyz/embed"
-            else -> "https://vidsrc.to/embed"
-        }
-        return if (movie.isTvShow) {
-            "$baseUrl/tv/${movie.id}/$season/$episode"
-        } else {
-            "$baseUrl/movie/${movie.id}"
+        return when (serverIndex) {
+            1 -> {
+                // Server 1: vidsrc.pm with Arabic subtitles enabled
+                if (movie.isTvShow) {
+                    "https://vidsrc.pm/embed/tv/${movie.id}/$season/$episode?ds_lang=ar"
+                } else {
+                    "https://vidsrc.pm/embed/movie/${movie.id}?ds_lang=ar"
+                }
+            }
+            2 -> {
+                // Server 2: embed.su with Arabic subtitles enabled
+                if (movie.isTvShow) {
+                    "https://embed.su/embed/tv/${movie.id}/$season/$episode?sub=ar"
+                } else {
+                    "https://embed.su/embed/movie/${movie.id}?sub=ar"
+                }
+            }
+            3 -> {
+                // Server 3: vidcore.org with Arabic subtitles enabled
+                if (movie.isTvShow) {
+                    "https://vidcore.org/embed/series/${movie.id}/$season/$episode?sub=ar"
+                } else {
+                    "https://vidcore.org/embed/movie/${movie.id}?sub=ar"
+                }
+            }
+            else -> {
+                val customBase = getBaseStreamServerUrl().trim().removeSuffix("/")
+                val baseUrl = if (customBase.isNotBlank()) customBase else "https://vidsrc.pm/embed"
+                if (movie.isTvShow) {
+                    "$baseUrl/tv/${movie.id}/$season/$episode?ds_lang=ar"
+                } else {
+                    "$baseUrl/movie/${movie.id}?ds_lang=ar"
+                }
+            }
         }
     }
 
@@ -422,6 +445,34 @@ class MovieRepository(
     fun getWatchlist(): Flow<List<Movie>> {
         return watchlistDao.getAll().map { list ->
             list.map { it.toMovie() }
+        }
+    }
+
+    suspend fun getTvSeasons(tvId: Int): List<Pair<Int, Int>> = withContext(Dispatchers.IO) {
+        val apiKey = getApiKey()
+        try {
+            val tvDetails = apiService.getTvDetails(tvId, apiKey)
+            val seasonList = tvDetails.seasons
+                ?.filter { (it.seasonNumber ?: 0) > 0 }
+                ?.map { Pair(it.seasonNumber, it.episodeCount ?: 10) }
+            if (!seasonList.isNullOrEmpty()) {
+                return@withContext seasonList
+            }
+            val numSeasons = tvDetails.numberOfSeasons ?: 1
+            (1..numSeasons.coerceAtLeast(1)).map { Pair(it, 10) }
+        } catch (e: Exception) {
+            listOf(Pair(1, 10), Pair(2, 10), Pair(3, 8))
+        }
+    }
+
+    suspend fun getTvEpisodesForSeason(tvId: Int, seasonNumber: Int): List<Int> = withContext(Dispatchers.IO) {
+        val apiKey = getApiKey()
+        try {
+            val seasonDetail = apiService.getTvSeasonDetails(tvId, seasonNumber, apiKey)
+            val epNumbers = seasonDetail.episodes.map { it.episodeNumber }
+            if (epNumbers.isNotEmpty()) epNumbers else (1..10).toList()
+        } catch (e: Exception) {
+            (1..10).toList()
         }
     }
 

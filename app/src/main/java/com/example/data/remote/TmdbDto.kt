@@ -43,7 +43,40 @@ data class TmdbMovieDetailsDto(
     @Json(name = "episode_run_time") val episodeRunTime: List<Int>? = null,
     @Json(name = "genres") val genres: List<TmdbGenreDto>? = null,
     @Json(name = "videos") val videos: TmdbVideosResponse? = null,
-    @Json(name = "credits") val credits: TmdbCreditsResponse? = null
+    @Json(name = "credits") val credits: TmdbCreditsResponse? = null,
+    @Json(name = "number_of_seasons") val numberOfSeasons: Int? = null,
+    @Json(name = "number_of_episodes") val numberOfEpisodes: Int? = null,
+    @Json(name = "seasons") val seasons: List<TmdbSeasonSummaryDto>? = null
+)
+
+@JsonClass(generateAdapter = true)
+data class TmdbSeasonSummaryDto(
+    @Json(name = "id") val id: Int? = null,
+    @Json(name = "season_number") val seasonNumber: Int = 1,
+    @Json(name = "name") val name: String? = null,
+    @Json(name = "episode_count") val episodeCount: Int? = null,
+    @Json(name = "poster_path") val posterPath: String? = null
+)
+
+@JsonClass(generateAdapter = true)
+data class TmdbSeasonDetailDto(
+    @Json(name = "id") val id: Int? = null,
+    @Json(name = "season_number") val seasonNumber: Int = 1,
+    @Json(name = "name") val name: String? = null,
+    @Json(name = "overview") val overview: String? = null,
+    @Json(name = "episodes") val episodes: List<TmdbEpisodeDto> = emptyList()
+)
+
+@JsonClass(generateAdapter = true)
+data class TmdbEpisodeDto(
+    @Json(name = "id") val id: Int,
+    @Json(name = "name") val name: String? = null,
+    @Json(name = "overview") val overview: String? = null,
+    @Json(name = "episode_number") val episodeNumber: Int,
+    @Json(name = "season_number") val seasonNumber: Int = 1,
+    @Json(name = "still_path") val stillPath: String? = null,
+    @Json(name = "runtime") val runtime: Int? = null,
+    @Json(name = "vote_average") val voteAverage: Double? = null
 )
 
 @JsonClass(generateAdapter = true)

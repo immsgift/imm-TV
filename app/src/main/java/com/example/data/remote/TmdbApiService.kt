@@ -95,6 +95,13 @@ interface TmdbApiService {
         @Query("api_key") apiKey: String
     ): TmdbVideosResponse
 
+    @GET("3/tv/{tv_id}/season/{season_number}")
+    suspend fun getTvSeasonDetails(
+        @Path("tv_id") tvId: Int,
+        @Path("season_number") seasonNumber: Int,
+        @Query("api_key") apiKey: String
+    ): TmdbSeasonDetailDto
+
     companion object {
         private const val BASE_URL = "https://api.themoviedb.org/"
 
